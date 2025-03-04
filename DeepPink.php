@@ -1,20 +1,31 @@
 <?php
+require_once 'i18n.php';
+
 class DeepPink {
     private $contenido;
     private $dom;
+    private $baseUrl; // New property to store the base URL
 
     public function __construct($nuevaurl) {
-        // Attempt to get the URL content
+        // Attempt to get the URL content.
         $this->contenido = @file_get_contents($nuevaurl);
         if ($this->contenido === false) {
             die("Error: Could not retrieve content from the URL.");
         }
         
-        // Create a new DOMDocument and load the HTML
+        // Create a new DOMDocument and load the HTML.
         $this->dom = new DOMDocument();
         libxml_use_internal_errors(true);
         $this->dom->loadHTML($this->contenido);
         libxml_clear_errors();
+        
+        // Extract base URL from the provided URL.
+        $parsedUrl = parse_url($nuevaurl);
+        if (isset($parsedUrl['scheme']) && isset($parsedUrl['host'])) {
+            $this->baseUrl = $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
+        } else {
+            die("Error: Invalid URL format.");
+        }
     }
 
     public function dameTitulo() {
@@ -23,7 +34,7 @@ class DeepPink {
             echo '<td>';
                 echo ($nodos->length > 0) ? "<div class='ok'></div>" : "<div class='ko'></div>";
             echo '</td>';
-            echo '<td><h4>Título del sitio</h4></td>';
+            echo '<td><h4>' . __('site_title') . '</h4></td>';
             echo '<td>';
                 if ($nodos->length > 0) {
                     echo $nodos->item(0)->textContent;
@@ -42,7 +53,7 @@ class DeepPink {
                 }
             }
             echo '</td>';
-            echo '<td><h4>Descripción del sitio</h4></td>';
+            echo '<td><h4>' . __('site_description') . '</h4></td>';
             echo '<td>';
             foreach ($metaTags as $meta) {
                 if ($meta->getAttribute('name') === 'description') {
@@ -61,7 +72,7 @@ class DeepPink {
             echo '<td>';
                 echo ($titulos->length > 0) ? "<div class='ok'></div>" : "<div class='ko'></div>";
             echo '</td>';
-            echo "<td><h4>Etiquetas de tipo H{$nivel}</h4></td>";
+            echo "<td><h4>" . sprintf(__('heading_tag'), $nivel) . "</h4></td>";
             echo '<td>';
             foreach ($titulos as $titulo) {
                 echo $titulo->textContent."<br>";
@@ -97,7 +108,7 @@ class DeepPink {
         if (!$body) {
             die("Error: Could not get the body content.");
         }
-        // Remove <script> and <style> tags
+        // Remove <script> and <style> tags.
         $scriptTags = $body->getElementsByTagName('script');
         for ($i = $scriptTags->length - 1; $i >= 0; $i--) {
             $scriptTags->item($i)->parentNode->removeChild($scriptTags->item($i));
@@ -119,7 +130,7 @@ class DeepPink {
         arsort($wordCount);
         echo "<tr>";
             echo '<td>' . (!empty($wordCount) ? "<div class='ok'></div>" : "<div class='ko'></div>") . '</td>';
-            echo "<td><h4>Palabras más frecuentes (sin stopwords ni contenido de script/style)</h4></td>";
+            echo "<td><h4>" . __('frequent_words') . "</h4></td>";
             echo "<td>";
                 foreach ($wordCount as $word => $count) {
                     if($count > 2){
@@ -131,7 +142,6 @@ class DeepPink {
     }
 
     public function nubeDePalabras() {
-        // Essentially similar to damePalabras(), but shows words as a cloud.
         $stopwords = array(
             "a", "acá", "ahí", "al", "algo", "algunas", "algunos", "allá", "allí", "ambos",
             "ante", "antes", "aquel", "aquella", "aquellas", "aquellos", "aquí", "arriba",
@@ -179,7 +189,7 @@ class DeepPink {
         arsort($wordCount);
         echo "<tr>";
             echo '<td>' . (!empty($wordCount) ? "<div class='ok'></div>" : "<div class='ko'></div>") . '</td>';
-            echo "<td><h4>Palabras más frecuentes</h4></td>";
+            echo "<td><h4>" . __('word_cloud') . "</h4></td>";
             echo "<td>";
             foreach ($wordCount as $word => $count) {
                 if($count > 2){
@@ -189,6 +199,104 @@ class DeepPink {
             echo "</td>";
         echo "</tr>";
     }
+     /**
+     * Check if robots.txt exists.
+     */
+    public function checkRobots() {
+        $robotsUrl = rtrim($this->baseUrl, '/') . '/robots.txt';
+        $content = @file_get_contents($robotsUrl);
+        echo "<tr>";
+            echo "<td>" . ($content !== false ? "<div class='ok'></div>" : "<div class='ko'></div>") . "</td>";
+            echo "<td><h4>" . __('robots_txt') . "</h4></td>";
+            echo "<td>" . ($content !== false ? "Found" : "Not Found") . "</td>";
+        echo "</tr>";
+    }
+
+    /**
+     * Check if sitemap.xml exists.
+     */
+    public function checkSitemap() {
+        $sitemapUrl = rtrim($this->baseUrl, '/') . '/sitemap.xml';
+        $content = @file_get_contents($sitemapUrl);
+        echo "<tr>";
+            echo "<td>" . ($content !== false ? "<div class='ok'></div>" : "<div class='ko'></div>") . "</td>";
+            echo "<td><h4>" . __('sitemap_xml') . "</h4></td>";
+            echo "<td>" . ($content !== false ? "Found" : "Not Found") . "</td>";
+        echo "</tr>";
+    }
+        /**
+     * Check that all <img> elements have a non-empty alt attribute.
+     */
+    public function checkImagesAlt() {
+        $images = $this->dom->getElementsByTagName('img');
+        $total = $images->length;
+        $missingAlt = 0;
+        $missingDetails = "";
+        
+        if ($total === 0) {
+            // No images found; we can consider this as "passing" the check.
+            echo "<tr>";
+                echo "<td><div class='ok'></div></td>";
+                echo "<td><h4>" . __('images_alt') . "</h4></td>";
+                echo "<td>No images found.</td>";
+            echo "</tr>";
+            return;
+        }
+        
+        foreach ($images as $index => $img) {
+            $alt = trim($img->getAttribute('alt'));
+            if ($alt === "") {
+                $missingAlt++;
+                // Optionally record which image is missing alt text.
+                $missingDetails .= "Image " . ($index + 1) . " missing alt text.<br>";
+            }
+        }
+        
+        echo "<tr>";
+            echo "<td>" . ($missingAlt === 0 ? "<div class='ok'></div>" : "<div class='ko'></div>") . "</td>";
+            echo "<td><h4>" . __('images_alt') . "</h4></td>";
+            echo "<td>";
+                if ($missingAlt === 0) {
+                    echo "All {$total} images have alt text.";
+                } else {
+                    echo "{$missingAlt} out of {$total} images are missing alt text.<br>";
+                    echo $missingDetails;
+                }
+            echo "</td>";
+        echo "</tr>";
+    }
+
+    /**
+     * Check if a favicon is declared in the page or available at /favicon.ico.
+     */
+    public function checkFavicon() {
+        $links = $this->dom->getElementsByTagName('link');
+        $found = false;
+        
+        foreach ($links as $link) {
+            $rel = strtolower($link->getAttribute('rel'));
+            if (strpos($rel, 'icon') !== false) {
+                $found = true;
+                break;
+            }
+        }
+        
+        // If no favicon link was found, try checking /favicon.ico on the base URL.
+        if (!$found) {
+            $faviconUrl = rtrim($this->baseUrl, '/') . '/favicon.ico';
+            $faviconContent = @file_get_contents($faviconUrl);
+            if ($faviconContent !== false) {
+                $found = true;
+            }
+        }
+        
+        echo "<tr>";
+            echo "<td>" . ($found ? "<div class='ok'></div>" : "<div class='ko'></div>") . "</td>";
+            echo "<td><h4>" . __('favicon') . "</h4></td>";
+            echo "<td>" . ($found ? "Found" : "Not Found") . "</td>";
+        echo "</tr>";
+    }
+
 }
 ?>
 

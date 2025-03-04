@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once 'i18n.php';
 
 // --- Logout Process ---
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
@@ -13,28 +14,34 @@ if (!isset($_SESSION['loggedin'])) {
     if (isset($_POST['login'])) {
         $username = trim($_POST['username']);
         $password = trim($_POST['password']);
+        // Save selected language from the dropdown.
+        if (isset($_POST['lang'])) {
+            $_SESSION['lang'] = $_POST['lang'];
+            // Reload translations after setting the language.
+            require_once 'i18n.php';
+        }
         // Default credentials: username "jocarsa" and password "jocarsa"
         if ($username === 'jocarsa' && $password === 'jocarsa') {
             $_SESSION['loggedin'] = true;
             header("Location: index.php");
             exit;
         } else {
-            $login_error = "Invalid credentials!";
+            $login_error = __('invalid_credentials');
         }
     }
-    // Show the login form if not logged in
+    // Show the login form if not logged in.
     ?>
     <!doctype html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Login - DeepPink Dashboard</title>
+      <title><?php echo __('login_page_title'); ?></title>
       <link rel="stylesheet" href="css/style.css">
       <style>
         /* Simple login form styling */
         .login-container {
-          max-width: 400px;
-          margin: 100px auto;
+          max-width: 300px;
+          margin: 30px auto;
           padding: 20px;
           background: #fff;
           border: 1px solid #ddd;
@@ -45,7 +52,8 @@ if (!isset($_SESSION['loggedin'])) {
           margin-bottom: 20px;
         }
         .login-container input[type="text"],
-        .login-container input[type="password"] {
+        .login-container input[type="password"],
+        .login-container select {
           width: 100%;
           padding: 10px;
           margin: 10px 0;
@@ -61,6 +69,9 @@ if (!isset($_SESSION['loggedin'])) {
           border-radius: 4px;
           cursor: pointer;
         }
+        .login-container img{
+        	width:100%;
+        }
         .login-container input[type="submit"]:hover {
           background: #005177;
         }
@@ -72,12 +83,20 @@ if (!isset($_SESSION['loggedin'])) {
     </head>
     <body>
       <div class="login-container">
-        <h2>Login</h2>
+      	<img src="deeppink.png">
+        <h2><?php echo __('login_title'); ?></h2>
         <?php if(isset($login_error)) { echo "<p class='login-error'>$login_error</p>"; } ?>
         <form method="post" action="index.php">
-          <input type="text" name="username" placeholder="Username" required>
-          <input type="password" name="password" placeholder="Password" required>
-          <input type="submit" name="login" value="Login">
+          <input type="text" name="username" placeholder="<?php echo __('username_placeholder'); ?>" required>
+          <input type="password" name="password" placeholder="<?php echo __('password_placeholder'); ?>" required>
+          <label for="lang"><?php echo __('select_language'); ?></label>
+          <select name="lang" id="lang">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+          </select>
+          <input type="submit" name="login" value="<?php echo __('login_button'); ?>">
         </form>
       </div>
     </body>
@@ -123,13 +142,17 @@ if (isset($_POST['dp_action']) && $_POST['dp_action'] === 'generate_report') {
       for ($i = 1; $i <= 6; $i++) {
           $web->dameTitulos($i);
       }
+      $web->checkRobots();
+		$web->checkSitemap();
+		   $web->checkImagesAlt();
+    $web->checkFavicon();
     echo "</table>";
     $report_html = ob_get_clean();
 
     if (isset($_POST['dp_save']) && $_POST['dp_save'] === '1') {
         $stmt = $db->prepare("INSERT INTO reports (url, report_html) VALUES (:url, :report_html)");
         $stmt->execute([':url' => $url, ':report_html' => $report_html]);
-        $save_message = "Report saved successfully.";
+        $save_message = __('save_report') . " " . __('generated_report');
     }
 }
 
@@ -143,7 +166,7 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : 'new_report';
 <html>
 <head>
   <meta charset="utf-8">
-  <title>DeepPink Dashboard</title>
+  <title><?php echo __('dashboard_title'); ?></title>
   <link rel="stylesheet" href="css/style.css">
   <style>
     /* Dashboard Layout Styles */
@@ -215,11 +238,12 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : 'new_report';
   <!-- Top Header -->
   <div id="dashboard-header">
     <div>
-      <h1>Corporate Information</h1>
-      <p>DeepPink Dashboard – Manage Your Reports</p>
+    	
+      <h1><?php echo __('welcome_message'); ?></h1>
+      <p><?php echo __('dashboard_subtitle'); ?></p>
     </div>
     <div>
-      <a href="index.php?action=logout">Logout</a>
+      <a href="index.php?action=logout"><?php echo __('logout'); ?></a>
     </div>
   </div>
 
@@ -228,49 +252,49 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : 'new_report';
     <!-- Navigation Pane -->
     <div id="dashboard-nav">
       <ul>
-        <li><a href="index.php?tab=new_report">Create New Report</a></li>
-        <li><a href="index.php?tab=view_reports">View Reports</a></li>
+        <li><a href="index.php?tab=new_report"><?php echo __('create_report'); ?></a></li>
+        <li><a href="index.php?tab=view_reports"><?php echo __('view_reports'); ?></a></li>
       </ul>
     </div>
 
     <!-- Content Area -->
     <div id="dashboard-content">
       <?php
-      // Display save message if available
+      // Display save message if available.
       if (isset($save_message)) {
           echo "<p style='color:green;'>$save_message</p>";
       }
-      // If a generated report is waiting to be saved, show it
+      // If a generated report is waiting to be saved, show it.
       if (isset($report_html) && (!isset($_POST['dp_save']) || $_POST['dp_save'] !== '1')) {
-          echo "<h2>Generated Report</h2>";
+          echo "<h2>" . __('generated_report') . "</h2>";
           echo $report_html;
           echo "<form method='post' action=''>";
           echo "<input type='hidden' name='dp_action' value='generate_report'>";
           echo "<input type='hidden' name='url' value='" . htmlspecialchars($url, ENT_QUOTES) . "'>";
           echo "<input type='hidden' name='dp_save' value='1'>";
-          echo "<input type='submit' value='Save Report'>";
+          echo "<input type='submit' value='" . __('save_report') . "'>";
           echo "</form>";
       }
-      // New Report Tab
+      // New Report Tab.
       if ($tab === 'new_report') {
       ?>
-          <h2>Create New Report</h2>
+          <h2><?php echo __('create_report'); ?></h2>
           <form method="post" action="">
             <p>
-              <label for="url">Enter URL to analyze:</label><br>
+              <label for="url"><?php echo __('enter_url'); ?></label><br>
               <input type="url" id="url" name="url" required style="width:100%;max-width:400px;">
             </p>
             <p>
               <input type="hidden" name="dp_action" value="generate_report">
-              <input type="submit" value="Generate Report">
+              <input type="submit" value="<?php echo __('create_report'); ?>">
             </p>
           </form>
       <?php
       }
-      // View Reports Tab
+      // View Reports Tab.
       elseif ($tab === 'view_reports') {
       ?>
-          <h2>Saved Reports</h2>
+          <h2><?php echo __('view_reports'); ?></h2>
           <?php if (count($reports) > 0) { ?>
           <table class="report-table">
             <thead>
@@ -287,6 +311,7 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : 'new_report';
                   <td><?php echo htmlspecialchars($r['url']); ?></td>
                   <td>
                     <a href="index.php?action=view&id=<?php echo $r['id']; ?>&tab=view_reports">View</a> |
+                    <a href="index.php?action=print&id=<?php echo $r['id']; ?>&tab=view_reports" target="_blank">Print</a> |
                     <a href="index.php?action=delete&id=<?php echo $r['id']; ?>&tab=view_reports" onclick="return confirm('Are you sure you want to delete this report?');">Delete</a>
                   </td>
                 </tr>
@@ -294,21 +319,70 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : 'new_report';
             </tbody>
           </table>
           <?php } else {
-              echo "<p>No reports saved yet.</p>";
+              echo "<p>" . __('no_reports') . "</p>";
           }
       }
-      // View a single report
+      // View a single report.
       if (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['id'])) {
           $id = intval($_GET['id']);
           $stmt = $db->prepare("SELECT * FROM reports WHERE id = :id");
           $stmt->execute([':id' => $id]);
           $report = $stmt->fetch(PDO::FETCH_ASSOC);
           if ($report) {
-              echo "<h2>View Report</h2>";
-              echo "<p><a href='index.php?tab=view_reports'>&laquo; Back to Reports</a></p>";
+              echo "<h2>" . __('generated_report') . "</h2>";
+              echo "<p><a href='index.php?tab=view_reports'>" . __('back_to_reports') . "</a></p>";
               echo $report['report_html'];
           }
       }
+     if (isset($_GET['action']) && $_GET['action'] === 'print' && isset($_GET['id'])) {
+    $id = intval($_GET['id']);
+    $stmt = $db->prepare("SELECT * FROM reports WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $report = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($report) {
+        ?>
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title><?php echo __('generated_report'); ?></title>
+            <link rel="stylesheet" href="css/style.css">
+            <style>
+                /* CSS rules for print: Hide everything except .printable */
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    .printable, .printable * {
+                        visibility: visible;
+                    }
+                    .printable {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                }
+            </style>
+            <script>
+                // Automatically launch the print dialog on page load.
+                window.onload = function() {
+                    window.print();
+                }
+            </script>
+        </head>
+        <body>
+            <!-- Only the report content is wrapped in the printable container -->
+            <div class="printable">
+                <?php echo $report['report_html']; ?>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
+}
       ?>
     </div>
   </div>
