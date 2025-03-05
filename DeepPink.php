@@ -199,9 +199,7 @@ class DeepPink {
             echo "</td>";
         echo "</tr>";
     }
-     /**
-     * Check if robots.txt exists.
-     */
+    
     public function checkRobots() {
         $robotsUrl = rtrim($this->baseUrl, '/') . '/robots.txt';
         $content = @file_get_contents($robotsUrl);
@@ -212,9 +210,6 @@ class DeepPink {
         echo "</tr>";
     }
 
-    /**
-     * Check if sitemap.xml exists.
-     */
     public function checkSitemap() {
         $sitemapUrl = rtrim($this->baseUrl, '/') . '/sitemap.xml';
         $content = @file_get_contents($sitemapUrl);
@@ -224,9 +219,7 @@ class DeepPink {
             echo "<td>" . ($content !== false ? "Found" : "Not Found") . "</td>";
         echo "</tr>";
     }
-        /**
-     * Check that all <img> elements have a non-empty alt attribute.
-     */
+    
     public function checkImagesAlt() {
         $images = $this->dom->getElementsByTagName('img');
         $total = $images->length;
@@ -234,7 +227,6 @@ class DeepPink {
         $missingDetails = "";
         
         if ($total === 0) {
-            // No images found; we can consider this as "passing" the check.
             echo "<tr>";
                 echo "<td><div class='ok'></div></td>";
                 echo "<td><h4>" . __('images_alt') . "</h4></td>";
@@ -247,7 +239,6 @@ class DeepPink {
             $alt = trim($img->getAttribute('alt'));
             if ($alt === "") {
                 $missingAlt++;
-                // Optionally record which image is missing alt text.
                 $missingDetails .= "Image " . ($index + 1) . " missing alt text.<br>";
             }
         }
@@ -266,9 +257,6 @@ class DeepPink {
         echo "</tr>";
     }
 
-    /**
-     * Check if a favicon is declared in the page or available at /favicon.ico.
-     */
     public function checkFavicon() {
         $links = $this->dom->getElementsByTagName('link');
         $found = false;
@@ -281,7 +269,6 @@ class DeepPink {
             }
         }
         
-        // If no favicon link was found, try checking /favicon.ico on the base URL.
         if (!$found) {
             $faviconUrl = rtrim($this->baseUrl, '/') . '/favicon.ico';
             $faviconContent = @file_get_contents($faviconUrl);
@@ -296,7 +283,6 @@ class DeepPink {
             echo "<td>" . ($found ? "Found" : "Not Found") . "</td>";
         echo "</tr>";
     }
-
 }
 ?>
 
